@@ -83,19 +83,23 @@
 (defvar org-registry-alist nil
   "An alist containing the Org registry.")
 
+(defvar org-registry-get-entries-hook nil
+  "A hook that is called after the links in a file have been collected.")
+
 ;;;###autoload
 (defun org-registry-show (&optional visit)
   "Show Org files where there are links pointing to the current
 buffer."
   (interactive "P")
-  (org-registry-initialize)
-  (let* ((blink (or (org-remember-annotation) ""))
-	 (link (when (string-match org-bracket-link-regexp blink)
-		 (match-string-no-properties 1 blink)))
-	 (desc (or (and (string-match org-bracket-link-regexp blink)
-			(match-string-no-properties 3 blink)) "No description"))
+  ;;  (org-registry-initialize)
+  (let* ((link (or (buffer-file-name) ""))
+	 ;; (link (when (string-match org-bracket-link-regexp blink)
+	 ;;         (match-string-no-properties 1 blink)))
+	 ;; (desc (or (and (string-match org-bracket-link-regexp blink)
+	 ;;        	(match-string-no-properties 3 blink)) "No description"))
 	 (files (org-registry-assoc-all link))
 	 file point selection tmphist)
+    (message "Link: %s " link)
     (cond ((and files visit)
 	   ;; result(s) to visit
 	   (cond ((< 1 (length files))
@@ -145,6 +149,8 @@ buffer."
 
 (defun org-registry-assoc-all (link &optional registry)
   "Return all associated entries of LINK in the registry."
+  (when (file-exists-p link)
+    (setq link (expand-file-name link)))
   (org-registry-find-all 
    (lambda (entry) (string= link (car entry)))
    registry))
@@ -171,20 +177,22 @@ create a new registry from scratch and eval it. If the registry
 exists, eval `org-registry-file' and make it the new value for
 `org-registry-alist'."
   (interactive "P")
-  (if (or from-scratch (not (file-exists-p org-registry-file)))
-      ;; create a new registry
-      (let ((files org-agenda-files) file)
-	(while (setq file (pop files))
-	  (setq file (expand-file-name file))
-	  (mapc (lambda (entry)
-		  (add-to-list 'org-registry-alist entry))
-		(org-registry-get-entries file)))
-	(when from-scratch
-	  (org-registry-create org-registry-alist)))
-    ;; eval the registry file
-    (with-temp-buffer
-      (insert-file-contents org-registry-file)
-      (eval-buffer))))
+  (cond ((or from-scratch (not (file-exists-p org-registry-file)))
+         ;; create a new registry
+         (setq org-registry-alist nil)
+         (mapc
+          (lambda (file)
+            (setq org-registry-alist 
+                  (nconc 
+                   org-registry-alist 
+                   (org-registry-get-entries (expand-file-name file)))))
+          (org-agenda-files))
+         (when from-scratch
+           (org-registry-create org-registry-alist)))
+        (t ;; eval the registry file
+         (with-temp-buffer
+           (insert-file-contents org-registry-file)
+           (eval-buffer)))))
 
 ;;;###autoload
 (defun org-registry-insinuate ()
@@ -199,20 +207,47 @@ Use with caution.  This could slow down things a bit."
   "List Org links in FILE that will be put in the registry."
   (let (bufstr result)
     (with-temp-buffer
+      ;;(buffer-disable-undo)
+      (setq buffer-undo-list t)
       (insert-file-contents file)
+      ;; need to set org-mode in order for org-heading-components to
+      ;; work
+      (org-mode)
       (goto-char (point-min))
-      (while (re-search-forward org-angle-link-re nil t)
-	(let* ((point (match-beginning 0))
-	       (link (match-string-no-properties 0))
-	       (desc (match-string-no-properties 0)))
-	    (add-to-list 'result (list link desc point file))))
+      ;;      (while (re-search-forward org-angle-link-re nil t)
+      ;; 	(let* ((point (match-beginning 0))
+      ;; 	       (link (match-string-no-properties 0))
+      ;; 	       (desc (match-string-no-properties 0))
+      ;;                heading-components heading-id)
+      ;;           (save-excursion 
+      ;;             (unless (org-before-first-heading-p)
+      ;;               (org-back-to-heading)
+      ;;               (setq heading-components (org-heading-components))
+      ;;               (setq heading-id (org-id-get)))
+      ;;             (add-to-list 'result
+      ;;                          (list link desc point file heading-components (point))))))
       (goto-char (point-min))
       (while (re-search-forward org-bracket-link-regexp nil t)
-	(let* ((point (match-beginning 0))
-	       (link (match-string-no-properties 1))
-	       (desc (or (match-string-no-properties 3) "No description")))
-	    (add-to-list 'result (list link desc point file)))))
-    ;; return the list of new entries
+        (let* ((point (match-beginning 0))
+               (link (match-string-no-properties 1))
+               (desc (or (match-string-no-properties 3) "No description"))
+               heading-components heading-id)
+          (save-excursion 
+            (unless (org-before-first-heading-p)
+              ;;(org-back-to-heading)
+              (setq heading-components (org-heading-components))
+              (setq heading-id (org-id-get)))
+            (setq result (cons 
+                          (list link desc point file heading-components (point))
+                          result)))))
+      (goto-char (point-min))
+      (let (returnList)
+        ;; because the return value of run-hook-with-args cannot be trusted
+        ;; use returnList instead
+        (run-hook-with-args 'org-registry-get-entries-hook file)
+        (setq result (nconc result returnList))
+        ))
+    (message "Get entries finished for file: %s" file)
     result))
 
 ;;;###autoload
@@ -221,32 +256,25 @@ Use with caution.  This could slow down things a bit."
   (interactive)
   (unless (org-mode-p) (error "Not in org-mode"))
   (let* ((from-file (expand-file-name (buffer-file-name)))
-	 (new-entries (org-registry-get-entries from-file)))
-    (with-temp-buffer
-      (unless (file-exists-p org-registry-file)
-	(org-registry-initialize t))
-      (find-file org-registry-file)
-      (goto-char (point-min))
-      (while (re-search-forward (concat from-file "\")$") nil t)
-	(let ((end (1+ (match-end 0)))
-	      (beg (progn (re-search-backward "^(\"" nil t)
-			  (match-beginning 0))))
-	(delete-region beg end)))
-      (goto-char (point-min))
-      (re-search-forward "^(\"" nil t)
-      (goto-char (match-beginning 0))
-      (mapc (lambda (elem)
-	      (insert (with-output-to-string (prin1 elem)) "\n"))
-	    new-entries)
-      (save-buffer)
-      (kill-buffer (current-buffer)))
-    (message (format "Org registry updated for %s"
-		     (file-name-nondirectory from-file)))))
+	 (new-entries (org-registry-get-entries from-file))
+         (old-entries-for-other-files
+          (org-registry-find-all 
+           (lambda (entry) 
+             (not (string= (nth 3 entry) from-file))))))
+    (message "org-registry-alist length: %d" (length org-registry-alist))
+    (setq org-registry-alist 
+          (nconc
+           new-entries
+           old-entries-for-other-files))
+    (message "org-registry-alist length after change: %d" (length org-registry-alist))
+    (org-registry-create org-registry-alist)))
 
 (defun org-registry-create (entries)
   "Create `org-registry-file' with ENTRIES."
   (let (entry)
     (with-temp-buffer
+      ;;(buffer-disable-undo)
+      (setq buffer-undo-list t)
       (find-file org-registry-file)
       (erase-buffer)
       (insert
