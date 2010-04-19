@@ -261,13 +261,24 @@ Use with caution.  This could slow down things a bit."
           (org-registry-find-all 
            (lambda (entry) 
              (not (string= (nth 3 entry) from-file))))))
-    (message "org-registry-alist length: %d" (length org-registry-alist))
-    (setq org-registry-alist 
-          (nconc
-           new-entries
-           old-entries-for-other-files))
-    (message "org-registry-alist length after change: %d" (length org-registry-alist))
-    (org-registry-create org-registry-alist)))
+    (cond
+     ((member 
+       (file-truename from-file) 
+       (mapcar 
+        (lambda (file) (file-truename file)) 
+        (org-agenda-files)))
+      (message "org-registry-alist length: %d"
+               (length org-registry-alist))
+      (setq org-registry-alist 
+            (nconc
+             new-entries
+             old-entries-for-other-files))
+      (message "org-registry-alist length after change: %d" 
+               (length org-registry-alist))
+      (org-registry-create org-registry-alist))
+     (t (message 
+         "org-registry: File is not in the agenda files -> Not updating registry."))
+     )))
 
 (defun org-registry-create (entries)
   "Create `org-registry-file' with ENTRIES."
@@ -293,7 +304,5 @@ Use with caution.  This could slow down things a bit."
   (message "Org registry created"))
 
 (provide 'org-registry)
-
-;;;  User Options, Variables
 
 ;;; org-registry.el ends here
