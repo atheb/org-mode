@@ -99,7 +99,6 @@ buffer."
 	        	(match-string-no-properties 3 blink)) "No description"))
 	 (files (org-registry-assoc-all link))
 	 file point selection tmphist)
-    (message "Link: %s " link)
     (cond ((and files visit)
 	   ;; result(s) to visit
 	   (cond ((< 1 (length files))
@@ -205,7 +204,7 @@ Use with caution.  This could slow down things a bit."
 
 (defun org-registry-get-entries (file)
   "List Org links in FILE that will be put in the registry."
-  (let (bufstr result)
+  (let (bufstr result inside-fstree-block)
     (with-temp-buffer
       ;;(buffer-disable-undo)
       (setq buffer-undo-list t)
@@ -214,33 +213,57 @@ Use with caution.  This could slow down things a bit."
       ;; work
       (org-mode)
       (goto-char (point-min))
-      (while (re-search-forward org-angle-link-re nil t)
-      	(let* ((point (match-beginning 0))
-      	       (link (match-string-no-properties 0))
-      	       (desc (match-string-no-properties 0))
-               heading-components heading-id)
-          (save-excursion 
-            (unless (org-before-first-heading-p)
-              ;;(org-back-to-heading)
-              (setq heading-components (org-heading-components))
-              (setq heading-id (org-id-get)))
-            (setq result (cons 
-                          (list link desc point file heading-components (point))
-                          result)))))
+      (setq inside-fstree-block nil)
+      (while (re-search-forward (org-registry-regexp-or-fstree-block org-angle-link-re) nil t)
+        (let ((match-end-point (match-end 0)))
+          (goto-char (match-beginning 0))
+          (cond ((looking-at "^#\\+BEGIN: +fstree")
+                 (setq inside-fstree-block t)
+                 (goto-char match-end-point))
+                ((looking-at "^#\\+END")
+                 (when inside-fstree-block
+                   (setq inside-fstree-block nil))
+                 (goto-char match-end-point))
+                ((looking-at org-angle-link-re)
+                 (let* ((point (match-beginning 0))
+                        (link (match-string-no-properties 0))
+                        (desc (or (match-string-no-properties 0) "No description"))
+                        heading-components heading-id)
+                   (save-excursion 
+                     (unless (org-before-first-heading-p)
+                       ;;(org-back-to-heading)
+                       (setq heading-components (org-heading-components))
+                       (setq heading-id (org-id-get)))
+                     (setq result (cons 
+                                   (list link desc point file heading-components (point) inside-fstree-block)
+                                   result)))
+                   (goto-char match-end-point))))))
       (goto-char (point-min))
-      (while (re-search-forward org-bracket-link-regexp nil t)
-        (let* ((point (match-beginning 0))
-               (link (match-string-no-properties 1))
-               (desc (or (match-string-no-properties 3) "No description"))
-               heading-components heading-id)
-          (save-excursion 
-            (unless (org-before-first-heading-p)
-              ;;(org-back-to-heading)
-              (setq heading-components (org-heading-components))
-              (setq heading-id (org-id-get)))
-            (setq result (cons 
-                          (list link desc point file heading-components (point))
-                          result)))))
+      (setq inside-fstree-block nil)
+      (while (re-search-forward (org-registry-regexp-or-fstree-block org-bracket-link-regexp) nil t)
+        (let ((match-end-point (match-end 0)))
+          (goto-char (match-beginning 0))
+          (cond ((looking-at "^#\\+BEGIN: +fstree")
+                 (setq inside-fstree-block t)
+                 (goto-char match-end-point))
+                ((looking-at "^#\\+END")
+                 (when inside-fstree-block
+                   (setq inside-fstree-block nil))
+                 (goto-char match-end-point))
+                ((looking-at org-bracket-link-regexp)
+                 (let* ((point (match-beginning 0))
+                        (link (match-string-no-properties 1))
+                        (desc (or (match-string-no-properties 3) "No description"))
+                        heading-components heading-id)
+                   (save-excursion 
+                     (unless (org-before-first-heading-p)
+                       ;;(org-back-to-heading)
+                       (setq heading-components (org-heading-components))
+                       (setq heading-id (org-id-get)))
+                     (setq result (cons 
+                                   (list link desc point file heading-components (point) inside-fstree-block)
+                                   result)))
+                   (goto-char match-end-point))))))
       (goto-char (point-min))
       (let (returnList)
         ;; because the return value of run-hook-with-args cannot be trusted
@@ -268,14 +291,10 @@ Use with caution.  This could slow down things a bit."
        (mapcar 
         (lambda (file) (file-truename file)) 
         (org-agenda-files)))
-      (message "org-registry-alist length: %d"
-               (length org-registry-alist))
       (setq org-registry-alist 
             (nconc
              new-entries
              old-entries-for-other-files))
-      (message "org-registry-alist length after change: %d" 
-               (length org-registry-alist))
       (org-registry-create org-registry-alist))
      (t (message 
          "org-registry: File is not in the agenda files -> Not updating registry."))
@@ -303,6 +322,11 @@ Use with caution.  This could slow down things a bit."
       (save-buffer)
       (kill-buffer (current-buffer))))
   (message "Org registry created"))
+
+(defun org-registry-regexp-or-fstree-block (regexp)
+  "Generates a regexp that matches either `regexp' or an org-fstree
+block."
+  (concat "\\(" regexp "\\|^#\\+BEGIN: +fstree\\|^#\\+END\\)"))
 
 (provide 'org-registry)
 
