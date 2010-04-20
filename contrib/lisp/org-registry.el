@@ -214,18 +214,19 @@ Use with caution.  This could slow down things a bit."
       ;; work
       (org-mode)
       (goto-char (point-min))
-      ;;      (while (re-search-forward org-angle-link-re nil t)
-      ;; 	(let* ((point (match-beginning 0))
-      ;; 	       (link (match-string-no-properties 0))
-      ;; 	       (desc (match-string-no-properties 0))
-      ;;                heading-components heading-id)
-      ;;           (save-excursion 
-      ;;             (unless (org-before-first-heading-p)
-      ;;               (org-back-to-heading)
-      ;;               (setq heading-components (org-heading-components))
-      ;;               (setq heading-id (org-id-get)))
-      ;;             (add-to-list 'result
-      ;;                          (list link desc point file heading-components (point))))))
+      (while (re-search-forward org-angle-link-re nil t)
+      	(let* ((point (match-beginning 0))
+      	       (link (match-string-no-properties 0))
+      	       (desc (match-string-no-properties 0))
+               heading-components heading-id)
+          (save-excursion 
+            (unless (org-before-first-heading-p)
+              ;;(org-back-to-heading)
+              (setq heading-components (org-heading-components))
+              (setq heading-id (org-id-get)))
+            (setq result (cons 
+                          (list link desc point file heading-components (point))
+                          result)))))
       (goto-char (point-min))
       (while (re-search-forward org-bracket-link-regexp nil t)
         (let* ((point (match-beginning 0))
