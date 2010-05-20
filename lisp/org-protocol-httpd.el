@@ -129,20 +129,12 @@ format and the subprotocol is registered in
   ;;(org-protocol-httpd-send-response process 200 "txt" ""))
   (condition-case err
       (progn
-        ;; DEBUG
-        ;;        (message "filter with process: %s " process)
-        ;;        (message "org-protocol-httpd-filter NEW: received: %s" header)
-;;(message (symbol-name (process-status process)))
         (let* ((header-alist (org-protocol-httpd-parse-header header))
                (path (car (split-string (replace-regexp-in-string "^/" "" (cdr (assoc "GET" header-alist))) "?")))
                responseString 
                (responseStatus 500))
-          ;; DEBUG
-          ;;          (message "org-protocol-httpd-filter NEW: PATH: %s" path)
           (cond ((string-match (concat "^" org-protocol-the-protocol ":") path)
                  ;; let org-protocol handle the path
-                 ;; TODO: Find a way to check whether path has been digested without errors
-                 ;;       Use an error handler for this?
                  (org-protocol-httpd-send-response process 200 "txt" "")                 
                  (org-protocol-check-filename-for-protocol path nil nil (lambda () (org-protocol-httpd-stop process))))
                  
