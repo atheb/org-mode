@@ -279,26 +279,23 @@ Use with caution.  This could slow down things a bit."
   "Update the registry for the current Org file."
   (interactive)
   (unless (org-mode-p) (error "Not in org-mode"))
-  (let* ((from-file (expand-file-name (buffer-file-name)))
-	 (new-entries (org-registry-get-entries from-file))
-         (old-entries-for-other-files
-          (org-registry-find-all 
-           (lambda (entry) 
-             (not (string= (nth 3 entry) from-file))))))
-    (cond
-     ((member 
-       (file-truename from-file) 
-       (mapcar 
-        (lambda (file) (file-truename file)) 
-        (org-agenda-files)))
-      (setq org-registry-alist 
-            (nconc
-             new-entries
-             old-entries-for-other-files))
-      (org-registry-create org-registry-alist))
-     (t (message 
-         "org-registry: File is not in the agenda files -> Not updating registry."))
-     )))
+  (let* ((from-file (expand-file-name (buffer-file-name))))
+    (when
+	(member 
+	 (file-truename from-file) 
+	 (mapcar 
+	  (lambda (file) (file-truename file)) 
+	  (org-agenda-files)))
+      (let* ((new-entries (org-registry-get-entries from-file))
+	     (old-entries-for-other-files
+	      (org-registry-find-all 
+	       (lambda (entry) 
+		 (not (string= (nth 3 entry) from-file))))))
+	(setq org-registry-alist 
+	      (nconc
+	       new-entries
+	       old-entries-for-other-files))
+	(org-registry-create org-registry-alist)))))
 
 (defun org-registry-create (entries)
   "Create `org-registry-file' with ENTRIES."
