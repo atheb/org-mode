@@ -271,7 +271,6 @@ Use with caution.  This could slow down things a bit."
         (run-hook-with-args 'org-registry-get-entries-hook file)
         (setq result (nconc result returnList))
         ))
-    (message "Get entries finished for file: %s" file)
     result))
 
 ;;;###autoload
