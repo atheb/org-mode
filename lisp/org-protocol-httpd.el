@@ -109,7 +109,8 @@ Here is an example:
    :server t
    :service org-protocol-httpd-port
    :filter 'org-protocol-httpd-filter
-   :family 'ipv4))
+   :family 'ipv4
+   :coding 'utf-8))
 
 (defun org-protocol-httpd-stop ( &optional process-to-stop)
   "Stop org-protocols server."
@@ -117,7 +118,7 @@ Here is an example:
   (let ((process (or process-to-stop
                      org-protocol-httpd-process-name)))
     (when (process-status process)
-      (process-send-eof process)
+      ;;(process-send-eof process)
       ;; DEBUG
       (message "Stopping process %s" process)
       (delete-process process))))
@@ -205,13 +206,13 @@ first space or \": \"."
 (defun org-protocol-httpd-send-response (process status mime string)
   "Send a string as response to the currently processed request."
   ;; DEBUG
-;;  (message "Sending response string.") 
+  ;;  (message "Sending response string.") 
   (process-send-string process 
                        (concat 
                         (org-protocol-httpd-generate-header mime status (length string))
-                        string))
+			string))
   (process-send-eof process)
-;;  (message "Deleting process: %s" process)
+  ;;  (message "Deleting process: %s" process)
   (delete-process process))
 
 (defun org-protocol-httpd-generate-header (mime status content-length)
@@ -230,5 +231,19 @@ first space or \": \"."
             "Content-length: " (number-to-string content-length) "\n"
             "Connection: close\n"
            "\n")))
+
+(defun org-protocol-httpd-escape-xml-attribute-chars (unescaped-string)
+  (replace-regexp-in-string 
+   "\"" "&quot;" 
+   (replace-regexp-in-string
+    "'" "&apos;"
+    (replace-regexp-in-string
+     ">" "&gt;"
+     (replace-regexp-in-string
+      "<" "&lt;"
+      (replace-regexp-in-string
+       "&" "&amp;"
+       unescaped-string)))))
+  )
 
 (provide 'org-protocol-httpd)
