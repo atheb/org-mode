@@ -38,10 +38,6 @@ from Emacs to the client."
 
 (defconst org-protocol-httpd-process-name "org-protocol-httpd")
 
-(defvar org-protocol-httpd-mime-types
-  '(("txt"  . "text/plain")
-    ("html" . "text/html")
-    ("xml"  . "text/xml")))
 
 (defvar org-protocol-httpd-status-strings
   '((200 . "OK")
@@ -150,7 +146,7 @@ format and the subprotocol is registered in
                  ;; TODO: Find a way to check whether path has been
                  ;;       digested without errors Use an error handler
                  ;;       for this?
-                 (org-protocol-httpd-send-response process 200 "txt" "")
+                 (org-protocol-httpd-send-response process 200 "text/plain" "")
                  (org-protocol-check-filename-for-protocol 
 		  path nil nil (lambda () (org-protocol-httpd-stop process))))
 		
@@ -173,7 +169,7 @@ format and the subprotocol is registered in
                           (sub-protocol-arguments   (match-string 2 path))
                           responseString)  
                      (cond (sub-protocol-kill-client
-                            (org-protocol-httpd-send-response process 200 "txt" "")
+                            (org-protocol-httpd-send-response process 200 "text/plain" "")
                             (funcall sub-protocol-function sub-protocol-arguments))
                            (t
                             (setq responseString 
@@ -187,16 +183,15 @@ format and the subprotocol is registered in
 			     (plist-get sub-protocol-entry :mime)
 			     responseString))))))
                 (t 
-                 (org-protocol-httpd-send-response process 500 "txt" "")))))
+                 (org-protocol-httpd-send-response process 500 "text/plain" "")))))
     ;; error handler
     (quit 
      (message "Quit in org-protocol-httpd-filter")
      (when (eq (process-status process) 'open)
-       ;;(message (symbol-name (process-status process)))
-       (org-protocol-httpd-send-response process 500 "txt" "")))
+       (org-protocol-httpd-send-response process 500 "text/plain" "")))
     (error
      (when (eq (process-status process) 'open)
-       (org-protocol-httpd-send-response process 500 "txt" ""))
+       (org-protocol-httpd-send-response process 500 "text/plain" ""))
      (message "Caught error in org-protocol-httpd-filter: %s" err))))
 
 (defun org-protocol-httpd-parse-header (header)
@@ -238,7 +233,7 @@ first space or \": \"."
             " "
             status-string 
             "\nContent-Type: "
-            mime-string "\n"
+            mime "\n"
             "Content-length: " (number-to-string content-length) "\n"
             "Connection: close\n"
            "\n")))
