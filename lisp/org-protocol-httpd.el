@@ -1,8 +1,6 @@
 ;;; org-protocol-httpd.el --- provides a small http server that
 ;;;                           accepts org-protocol commands as path
 ;;;                     
-
-
 ;; Copyright 2009 Andreas Burtzlaff
 ;;
 ;; Author: Andreas Burtzlaff < andreas at burtzlaff dot de >
@@ -25,10 +23,37 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+;; Commentary:
+;;
+;; Summary:
+;; --------
+;;
+;; An HTTP-server listening on port `org-protocol-httpd-port' responds
+;; to GET-requests where the path is either: 
+;;   - an org-protocol action, e.g. "org-protocol://store-link://...".
+;;     In this case the associated action from 
+;;     `org-protocol-protocol-alist-default' is executed.
+;;
+;;   - an org-protocol-httpd action, starting with "org-protocol-httpd://...".
+;;     In this case the associated function from 
+;;     `org-protocol-httpd-protocol-alist' is evaluated and its value is
+;;     returned to the client.
+;;
+;; Usage:
+;; ------
+;; 
+;; 
+;;
+;;
+;;
+
+
 (defgroup org-protocol-httpd nil
-"A server implementation for interaction with org-mode extending
-the capabilities of org-protocol by allowing data to be returned
-from Emacs to the client."
+"A server implementation for external interaction with org-mode.
+
+An HTTP-server that extends the capabilities of org-protocol by
+allowing data to be returned to the client.
+"
 :group 'org-protocol)
 
 (defcustom org-protocol-httpd-port 15187
@@ -36,8 +61,7 @@ from Emacs to the client."
 :group 'org-protocol-httpd
 :type 'integer)
 
-(defconst org-protocol-httpd-process-name "org-protocol-httpd")
-
+(defconst org-protocol-httpd-process-name "*org-protocol-httpd-process*")
 
 (defvar org-protocol-httpd-status-strings
   '((200 . "OK")
@@ -54,50 +78,31 @@ See `org-protocol-httpd-protocol-alist' for a description of this variable.")
 
 
 (defcustom org-protocol-httpd-protocol-alist nil
-  "* Register custom handlers for org-protocol-http.
+  "Register custom handlers for org-protocol-httpd.
 
 Each element of this list must be of the form:
 
-  (module-name :protocol protocol :function func :kill-client nil)
+  (module-name :protocol protocol :function func :mime mime)
 
-protocol - protocol to detect in a filename without trailing colon and slashes.
+protocol - protocol to detect in a url without trailing colon and slashes.
            See rfc1738 section 2.1 for more on this.
-           If you define a protocol \"my-protocol\", `org-protocol-check-filename-for-protocol'
-           will search filenames for \"org-protocol:/my-protocol:/\"
-           and trigger your action for every match. `org-protocol' is defined in
-           `org-protocol-the-protocol'. Double and tripple slashes are compressed
-           to one by emacsclient.
+           If you define a protocol \"my-protocol\", `org-protocol-httpd-filter'
+           will respond to paths starting with \"org-protocol-httpd:/my-protocol:/\"
+           by returning the value of the associated function.
 
 function - function that handles requests with protocol and takes exactly one
-           argument: the filename with all protocols stripped. If the function
-           returns nil, emacsclient and -server do nothing. Any non-nil return
-           value is considered a valid filename and thus passed to the server.
+           argument: the path with all protocols stripped. If the function 
+           returns a string value, it is returned to the client.
 
-           `org-protocol.el provides some support for handling those filenames,
-           if you stay with the conventions used for the standard handlers in
-           `org-protocol-protocol-alist-default'. See `org-protocol-split-data'.
-
-kill-client - If t, kill the client immediately, once the sub-protocol is
-           detected. This is neccessary for actions that can be interupted by
-           `C-g' to avoid dangeling emacsclients. Note, that all other command
-           line arguments but the this one will be discarded, greedy handlers
-           still receive the whole list of arguments though.
-
-Here is an example:
-
-  (setq org-protocol-protocol-alist
-      '((\"my-protocol\"
-         :protocol \"my-protocol\"
-         :function my-protocol-handler-fuction)
-        (\"your-protocol\"
-         :protocol \"your-protocol\"
-         :function your-protocol-handler-fuction)))"
+mime     - a mime string that the functions return string is be interpreted as.
+           This string is the Content-Type of the HTTP response. 
+"
   :group 'org-protocol-httpd
   :type '(alist))
 
 
 (defun org-protocol-httpd-start-server ()
-  "Start org-protocols server."
+  "Start org-protocol-httpd server."
   (interactive)
   (org-protocol-httpd-stop)
   (make-network-process
@@ -109,27 +114,19 @@ Here is an example:
    :coding 'utf-8))
 
 (defun org-protocol-httpd-stop ( &optional process-to-stop)
-  "Stop org-protocols server."
+  "Stop org-protocol-httpd server."
   (interactive)
   (let ((process (or process-to-stop
                      org-protocol-httpd-process-name)))
     (when (process-status process)
-      ;;(process-send-eof process)
-      ;; DEBUG
-      (message "Stopping process %s" process)
       (delete-process process))))
 
 (defun org-protocol-httpd-filter (process header)
-  "Respond to query if the path `string' has valid org-protocol
-format and the subprotocol is registered in
-`org-protocol-protocol-alist-default'."
-  ;;(org-protocol-httpd-send-response process 200 "txt" ""))
+  "Respond to query if the path in the http header `header' has
+valid org-protocol or org-protocol-httpd format and the subprotocol is registered in
+`org-protocol-protocol-alist-default' or `org-protocol-httpd-protocol-alist', respectively."
   (condition-case err
       (progn
-        ;; DEBUG
-        ;;        (message "filter with process: %s " process)
-        ;;        (message "org-protocol-httpd-filter NEW: received: %s" header)
-	;;(message (symbol-name (process-status process)))
         (let* ((header-alist (org-protocol-httpd-parse-header header))
                (path 
 		(car (split-string 
@@ -139,12 +136,10 @@ format and the subprotocol is registered in
 		      "?")))
                responseString 
                (responseStatus 500))
-          ;; DEBUG
-          ;;          (message "org-protocol-httpd-filter NEW: PATH: %s" path)
           (cond ((string-match (concat "^" org-protocol-the-protocol ":") path)
                  ;; let org-protocol handle the path
                  ;; TODO: Find a way to check whether path has been
-                 ;;       digested without errors Use an error handler
+                 ;;       digested without errors. Use an error handler
                  ;;       for this?
                  (org-protocol-httpd-send-response process 200 "text/plain" "")
                  (org-protocol-check-filename-for-protocol 
@@ -156,7 +151,6 @@ format and the subprotocol is registered in
 			      200 "text/plain" ""))))
                 ((string-match 
 		  (concat "^" org-protocol-httpd-the-protocol "://\\([^:/]+\\)://\\(.*\\)") path)
-                 ;;                 (message "httpd-protocol encountered")
                  (let ((sub-protocol-string (match-string 1 path))
                        sub-protocol-entry)
                    (when (null sub-protocol-string)
@@ -167,7 +161,6 @@ format and the subprotocol is registered in
                    (when (null sub-protocol-entry)
                      (error "No sub protocol." ))
                    (setq sub-protocol-entry (cdr sub-protocol-entry))
-                   ;;                   (message "Found sub protocol")
                    (let* ((sub-protocol-function    (plist-get sub-protocol-entry :function))
                           (sub-protocol-kill-client (plist-get sub-protocol-entry :kill-client))
                           (sub-protocol-arguments   (match-string 2 path))
@@ -179,9 +172,7 @@ format and the subprotocol is registered in
                             (setq responseString 
                                   (funcall 
                                    sub-protocol-function
-                                   sub-protocol-arguments
-                                   ))
-                            ;;                  (message "Function executed")
+                                   sub-protocol-arguments))
                             (org-protocol-httpd-send-response 
 			     process 200 
 			     (plist-get sub-protocol-entry :mime)
@@ -215,20 +206,16 @@ first space or \": \"."
 
 (defun org-protocol-httpd-send-response (process status mime string)
   "Send a string as response to the currently processed request."
-  ;; DEBUG
-  ;;  (message "Sending response string.") 
   (process-send-string 
    process 
    (concat (org-protocol-httpd-generate-header mime status (length string))
 	   string))
   (process-send-eof process)
-  ;;  (message "Deleting process: %s" process)
   (delete-process process))
 
 (defun org-protocol-httpd-generate-header (mime status content-length)
-  (let ((mime-string (cdr (assoc mime org-protocol-httpd-mime-types)))
-        (status-string (cdr (assoc status org-protocol-httpd-status-strings))))
-    (when (null mime-string)
+  (let ((status-string (cdr (assoc status org-protocol-httpd-status-strings))))
+    (when (null mime)
       (error "Unknown mime type"))
     (when (null status-string)
       (error "Unknown status type: %d" status))
@@ -243,6 +230,7 @@ first space or \": \"."
            "\n")))
 
 (defun org-protocol-httpd-escape-xml-attribute-chars (unescaped-string)
+  "Escape characters for use in xml attributes."
   (replace-regexp-in-string 
    "\"" "&quot;" 
    (replace-regexp-in-string
