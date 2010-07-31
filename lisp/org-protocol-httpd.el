@@ -148,8 +148,12 @@ format and the subprotocol is registered in
                  ;;       for this?
                  (org-protocol-httpd-send-response process 200 "text/plain" "")
                  (org-protocol-check-filename-for-protocol 
-		  path nil nil (lambda () (org-protocol-httpd-stop process))))
-		
+		  path
+		  nil
+		  nil 
+		  (lambda () (org-protocol-httpd-send-response 
+			      process
+			      200 "text/plain" ""))))
                 ((string-match 
 		  (concat "^" org-protocol-httpd-the-protocol "://\\([^:/]+\\)://\\(.*\\)") path)
                  ;;                 (message "httpd-protocol encountered")
