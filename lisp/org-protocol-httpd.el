@@ -4,7 +4,12 @@
 ;; Copyright 2009 Andreas Burtzlaff
 ;;
 ;; Author: Andreas Burtzlaff < andreas at burtzlaff dot de >
-;; Version: 0.1devel
+;;
+;; Credits go to Christopher Wellons < mosquitopsu at gmail dot com >,
+;; whose "Emacs web server" inspired me to write this code.
+;; http://nullprogram.com/blog/2009/05/17/             
+;;
+;; Version: 0.1
 ;; Keywords: org-mode org-protocol http
 ;;
 ;; This file is not part of GNU Emacs.
