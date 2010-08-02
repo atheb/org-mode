@@ -146,9 +146,8 @@ valid org-protocol or org-protocol-httpd format and the subprotocol is registere
 		  path
 		  nil
 		  nil 
-		  (lambda () (org-protocol-httpd-send-response 
-			      process
-			      200 "text/plain" ""))))
+		  (lambda () );;(org-protocol-httpd-send-response process 200 "text/plain" "")
+		  ))
                 ((string-match 
 		  (concat "^" org-protocol-httpd-the-protocol "://\\([^:/]+\\)://\\(.*\\)") path)
                  (let ((sub-protocol-string (match-string 1 path))
