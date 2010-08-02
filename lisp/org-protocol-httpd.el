@@ -1,7 +1,7 @@
 ;;; org-protocol-httpd.el --- provides a small http server that
 ;;;                           accepts org-protocol commands as path
 ;;;                     
-;; Copyright 2009 Andreas Burtzlaff
+;; Copyright 2010 Andreas Burtzlaff
 ;;
 ;; Author: Andreas Burtzlaff < andreas at burtzlaff dot de >
 ;;
@@ -30,28 +30,62 @@
 
 ;; Commentary:
 ;;
+;; -------------------------------------------------------------------------
+;; |                        * IMPORTANT NOTE: *                            |
+;; |   PLEASE MAKE SURE TO RESTRICT ACCESS TO PORT 15187 TO LOCALHOST !!!  |
+;; -------------------------------------------------------------------------
+;;
 ;; Summary:
 ;; --------
 ;;
-;; An HTTP-server listening on port `org-protocol-httpd-port' responds
-;; to GET-requests where the path is either: 
-;;   - an org-protocol action, e.g. "org-protocol://store-link://...".
+;; An HTTP-server listening on port 15187 responds to GET-requests where the 
+;; path is either: 
+;;   - an org-protocol action, e.g. "org-protocol://capture://...".
 ;;     In this case the associated action from 
-;;     `org-protocol-protocol-alist-default' is executed.
+;;     `org-protocol-protocol-alist' is executed.
 ;;
 ;;   - an org-protocol-httpd action, starting with "org-protocol-httpd://...".
 ;;     In this case the associated function from 
 ;;     `org-protocol-httpd-protocol-alist' is evaluated and its value is
 ;;     returned to the client.
 ;;
+;; Installation:
+;; -------------
+;; 
+;; Put:
+;;
+;; (require 'org-protocol-httpd)
+;; (org-protocol-httpd-start-server)
+;; 
+;; into .emacs
+;;
 ;; Usage:
 ;; ------
 ;; 
+;; To trigger org-protocol actions use requests like:
 ;; 
+;; http://localhost:15187/org-protocol://capture://http%3A%2F%2Forgmode.org%2F/Org-Mode%3A%20Your%20Life%20in%20Plain%20Text/
+;;
+;; Please refer to the documentation of org-protocol for detailed
+;; information on the different actions available:
+;; 
+;; http://orgmode.org/worg/org-contrib/org-protocol.php
+;;
+;; In Firefox it is possible to create a bookmark with the following location, 
+;; to invoke capture:
+;;
+;; javascript:{var req=new XMLHttpRequest();
+;;             req.open('GET','http://localhost:15187/org-protocol://capture://'+
+;;                            encodeURIComponent(location.href)+'/'+
+;;                            encodeURIComponent(document.title)+'/'+
+;;                            encodeURIComponent(window.getSelection()),true);
+;;             req.send(null);}
 ;;
 ;;
 ;;
 
+
+(require 'org-protocol)
 
 (defgroup org-protocol-httpd nil
 "A server implementation for external interaction with org-mode.
@@ -66,7 +100,7 @@ allowing data to be returned to the client.
 :group 'org-protocol-httpd
 :type 'integer)
 
-(defconst org-protocol-httpd-process-name "*org-protocol-httpd-process*")
+(defconst org-protocol-httpd-process-name "org-protocol-httpd")
 
 (defvar org-protocol-httpd-status-strings
   '((200 . "OK")
