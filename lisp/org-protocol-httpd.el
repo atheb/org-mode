@@ -182,12 +182,12 @@ valid org-protocol or org-protocol-httpd format and the subprotocol is registere
                  ;; TODO: Find a way to check whether path has been
                  ;;       digested without errors. Use an error handler
                  ;;       for this?
-                 (org-protocol-httpd-send-response process 200 "text/plain" "")
+                 (org-protocol-httpd-send-response process 204 "text/plain" "")
                  (org-protocol-check-filename-for-protocol 
 		  path
 		  nil
 		  nil 
-		  (lambda () );;(org-protocol-httpd-send-response process 200 "text/plain" "")
+		  (lambda () );;(org-protocol-httpd-send-response process 204 "text/plain" "")
 		  ))
                 ((string-match 
 		  (concat "^" org-protocol-httpd-the-protocol "://\\([^:/]+\\)://\\(.*\\)") path)
@@ -206,7 +206,7 @@ valid org-protocol or org-protocol-httpd format and the subprotocol is registere
                           (sub-protocol-arguments   (match-string 2 path))
                           responseString)  
                      (cond (sub-protocol-kill-client
-                            (org-protocol-httpd-send-response process 200 "text/plain" "")
+                            (org-protocol-httpd-send-response process 204 "text/plain" "")
                             (funcall sub-protocol-function sub-protocol-arguments))
                            (t
                             (setq responseString 
@@ -218,7 +218,7 @@ valid org-protocol or org-protocol-httpd format and the subprotocol is registere
 			     (plist-get sub-protocol-entry :mime)
 			     responseString))))))
                 (t 
-                 (org-protocol-httpd-send-response process 500 "text/plain" "")))))
+                 (org-protocol-httpd-send-response process 400 "text/plain" "")))))
     ;; error handler
     (quit 
      (message "Quit in org-protocol-httpd-filter")
