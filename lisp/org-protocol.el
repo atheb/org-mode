@@ -580,7 +580,7 @@ The location for a browser's bookmark should look like this:
 
 ;;; Core functions:
 
-(defun org-protocol-check-filename-for-protocol (fname restoffiles client &optional kill-function)
+(defun org-protocol-check-filename-for-protocol (fname restoffiles client)
   "Detect if `org-protocol-the-protocol' and a known sub-protocol is used in fname.
 Sub-protocols are registered in `org-protocol-protocol-alist' and
 `org-protocol-protocol-alist-default'.
@@ -608,8 +608,8 @@ as filename."
                        (splitted (split-string fname proto))
                        (result (if greedy restoffiles (cadr splitted))))
                   (when (plist-get (cdr prolist) :kill-client)
-                    (message "Greedy org-protocol handler. Killing client.")
-                    (or (funcall kill-function) (server-edit)))
+		    (message "Greedy org-protocol handler. Killing client.")
+		    (server-edit))
                   (when (fboundp func)
                     (unless greedy
                       (throw 'fname (funcall func result)))
