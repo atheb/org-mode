@@ -81,6 +81,11 @@
 ;;                            encodeURIComponent(window.getSelection()),true);
 ;;             req.send(null);}
 ;;
+;; Development:
+;; ------------
+;;
+;; For information on how to add new handlers that can return content 
+;; to the client see the description of `org-protocol-httpd-protocol-alist'
 ;;
 ;;
 
