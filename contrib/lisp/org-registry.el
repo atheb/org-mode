@@ -225,8 +225,9 @@ Use with caution.  This could slow down things a bit."
                  (goto-char match-end-point))
                 ((looking-at org-angle-link-re)
                  (let* ((point (match-beginning 0))
-                        (link (match-string-no-properties 0))
-                        (desc (or (match-string-no-properties 0) "No description"))
+                        (link (concat (match-string-no-properties 1) ":"
+				      (match-string-no-properties 2)))
+                        (desc link)
                         heading-components heading-id)
                    (save-excursion 
                      (unless (org-before-first-heading-p)
