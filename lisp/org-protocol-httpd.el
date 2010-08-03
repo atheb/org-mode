@@ -117,22 +117,25 @@ See `org-protocol-httpd-protocol-alist' for a description of this variable.")
 
 
 (defcustom org-protocol-httpd-protocol-alist nil
-  "Register custom handlers for org-protocol-httpd.
+  "A list of custom handlers for org-protocol-httpd requests.
 
-Each element of this list must be of the form:
+List elements have the form:
 
   (module-name :protocol protocol :function func :mime mime)
 
-protocol - protocol to detect in a url without trailing colon and slashes.
-           If you define a protocol \"foo-protocol\", `org-protocol-httpd-filter'
+where
+
+protocol : the protocol string to detect in the path of a URL.
+           If a protocol \"foo-protocol\" is defined, `org-protocol-httpd-filter'
            will respond to paths starting with \"org-protocol-httpd:/foo-protocol:/\"
            by returning the value of the associated function.
 
-function - function that handles requests with protocol and takes exactly one
-           argument: the path with all protocols stripped. If the function 
-           returns a string value, it is returned to the client.
+function : the function that actually handles the request.
+           It takes the path of the URL without the protocol parts as argument
+           If the function returns a string value, it is returned to the client
+           as response to the GET-request.
 
-mime     - a mime string that the functions return string is be interpreted as.
+mime     : a mime string that the functions return string is be interpreted as.
            This string is the Content-Type of the HTTP response. 
 "
   :group 'org-protocol-httpd
