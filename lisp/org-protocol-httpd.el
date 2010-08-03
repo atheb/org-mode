@@ -27,7 +27,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
+;;
 ;; Commentary:
 ;;
 ;; -------------------------------------------------------------------------
@@ -124,9 +124,8 @@ Each element of this list must be of the form:
   (module-name :protocol protocol :function func :mime mime)
 
 protocol - protocol to detect in a url without trailing colon and slashes.
-           See rfc1738 section 2.1 for more on this.
-           If you define a protocol \"my-protocol\", `org-protocol-httpd-filter'
-           will respond to paths starting with \"org-protocol-httpd:/my-protocol:/\"
+           If you define a protocol \"foo-protocol\", `org-protocol-httpd-filter'
+           will respond to paths starting with \"org-protocol-httpd:/foo-protocol:/\"
            by returning the value of the associated function.
 
 function - function that handles requests with protocol and takes exactly one
