@@ -186,8 +186,7 @@ exists, eval `org-registry-file' and make it the new value for
                    org-registry-alist 
                    (org-registry-get-entries (expand-file-name file)))))
           (org-agenda-files))
-         (when from-scratch
-           (org-registry-create org-registry-alist)))
+	 (org-registry-create org-registry-alist))
         (t ;; eval the registry file
          (with-temp-buffer
            (insert-file-contents org-registry-file)
