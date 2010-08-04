@@ -81,7 +81,57 @@
   :group 'org-registry)
 
 (defvar org-registry-alist nil
-  "An alist containing the Org registry.")
+  "An alist containing the Org registry.
+
+Each entry is a list with the following elements:
+
+| Nr. | Description                            | Type    |
+|-----+----------------------------------------+---------|
+|   0 | link                                   | string  |
+|   1 | link description                       | string  |
+|   2 | point of the link in the file          | numeric |
+|   3 | file name                              | string  |
+|   4 | the output of (org-heading-components) | list    |
+|   5 | point of the heading in the file       | numeric |
+|   6 | is link inside an org-fstree block     | nil/t   |
+
+
+Please use the function org-registry-entry-... to access an
+entry.
+")
+
+(defun org-registry-entry-get-link (entry)
+  (car entry))
+
+(defun org-registry-entry-get-link-desc (entry)
+  (nth 1 entry))
+
+(defun org-registry-entry-get-point (entry)
+  (nth 2 entry))
+
+(defun org-registry-entry-get-file-name (entry)
+  (nth 3 entry))
+
+(defun org-registry-entry-get-heading-components (entry)
+  (nth 4 entry))
+
+(defun org-registry-entry-get-heading-text (entry)
+  (let ((heading-components (org-registry-entry-get-heading-components entry)))
+    (if heading-components
+	(nth 4 heading-components)
+      "(Before first heading)")))
+
+(defun org-registry-entry-get-heading-tags (entry)
+  (let ((heading-components (org-registry-entry-get-heading-components entry)))
+    (if heading-components
+	(nth 5 heading-components)
+      "")))
+
+(defun org-registry-entry-get-heading-point (entry)
+  (or (nth 5 entry) 0))
+
+(defun org-registry-entry-is-inside-fstree-block (entry)
+  (nth 6 entry))
 
 (defvar org-registry-get-entries-hook nil
   "A hook that is called after the links in a file have been collected.")
@@ -103,11 +153,13 @@ buffer."
 	   ;; result(s) to visit
 	   (cond ((< 1 (length files))
 		  ;; more than one result
-		  (setq tmphist (mapcar (lambda(entry)
-					  (format "%s (%d) [%s]"
-						  (nth 3 entry) ; file
-						  (nth 2 entry) ; point
-						  (nth 1 entry))) files))
+		  (setq tmphist 
+			(mapcar 
+			 (lambda(entry)
+			   (format "%s (%d) [%s]"
+				   (org-registry-entry-get-file-name entry)
+				   (org-registry-entry-get-point entry)
+				   (org-registry-entry-get-link entry))) files))
 		  (setq selection (completing-read "File: " tmphist
 						   nil t nil 'tmphist))
 		  (string-match "\\(.+\\) (\\([0-9]+\\))" selection)
@@ -115,8 +167,8 @@ buffer."
 		  (setq point (string-to-number (match-string 2 selection))))
 		 ((eq 1 (length files))
 		  ;; just one result
-		  (setq file (nth 3 (car files)))
-		  (setq point (nth 2 (car files)))))
+		  (setq file (org-registry-entry-get-file-name (car files)))
+		  (setq point (org-registry-entry-get-point (car files)))))
 	   ;; visit the (selected) file
 	   (funcall org-registry-find-file file)
 	   (goto-char point)
@@ -127,9 +179,9 @@ buffer."
 	   (cond  ((eq 1 (length files))
 		   ;; show one file
 		   (message "Link in file %s (%d) [%s]"
-			    (nth 3 (car files))
-			    (nth 2 (car files))
-			    (nth 1 (car files))))
+			    (org-registry-entry-get-file-name (car files))
+			    (org-registry-entry-get-point (car files))
+			    (org-registry-entry-get-link (car files))))
 		  (t (org-registry-display-files files link))))
 	  (t (message "No link to this in org-agenda-files")))))
 
@@ -141,8 +193,10 @@ buffer."
   (insert (format "Files pointing to %s:\n\n" link))
   (let (file)
     (while (setq file (pop files))
-      (insert (format "%s (%d) [%s]\n" (nth 3 file)
-		      (nth 2 file) (nth 1 file)))))
+      (insert (format "%s (%d) [%s]\n" 
+		      (org-registry-entry-get-file-name file)
+		      (org-registry-entry-get-point file) 
+		      (org-registry-entry-get-link file)))))
   (shrink-window-if-larger-than-buffer)
   (other-window 1))
 
@@ -290,7 +344,7 @@ Use with caution.  This could slow down things a bit."
 	     (old-entries-for-other-files
 	      (org-registry-find-all 
 	       (lambda (entry) 
-		 (not (string= (nth 3 entry) from-file))))))
+		 (not (string= (org-registry-entry-get-file-name entry) from-file))))))
 	(setq org-registry-alist 
 	      (nconc
 	       new-entries
