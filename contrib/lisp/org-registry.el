@@ -96,7 +96,7 @@ Each entry is a list with the following elements:
 |   6 | is link inside an org-fstree block     | nil/t   |
 
 
-Please use the function org-registry-entry-... to access an
+Please use the functions org-registry-entry-... to access an
 entry.
 ")
 
