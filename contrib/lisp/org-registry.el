@@ -265,6 +265,7 @@ Use with caution.  This could slow down things a bit."
       ;; need to set org-mode in order for org-heading-components to
       ;; work
       (org-mode)
+      ;; look for angle links
       (goto-char (point-min))
       (setq inside-fstree-block nil)
       (while (re-search-forward (org-registry-regexp-or-fstree-block org-angle-link-re) nil t)
@@ -293,6 +294,36 @@ Use with caution.  This could slow down things a bit."
                                    (list link desc point file heading-components heading-point inside-fstree-block)
                                    result)))
                    (goto-char match-end-point))))))
+      ;; look for plain links
+      (goto-char (point-min))
+      (setq inside-fstree-block nil)
+      (while (re-search-forward (org-registry-regexp-or-fstree-block org-plain-link-re) nil t)
+        (let ((match-end-point (match-end 0)))
+          (goto-char (match-beginning 0))
+          (cond ((looking-at "^#\\+BEGIN: +fstree")
+                 (setq inside-fstree-block t)
+                 (goto-char match-end-point))
+                ((looking-at "^#\\+END")
+                 (when inside-fstree-block
+                   (setq inside-fstree-block nil))
+                 (goto-char match-end-point))
+                ((looking-at org-plain-link-re)
+                 (let* ((point (match-beginning 0))
+                        (link (concat (match-string-no-properties 1) ":"
+				      (match-string-no-properties 2)))
+                        (desc link)
+                        heading-components heading-id heading-point)
+                   (save-excursion 
+                     (unless (org-before-first-heading-p)
+                       (setq heading-components (org-heading-components))
+                       (setq heading-id (org-id-get))
+                       (org-back-to-heading)
+		       (setq heading-point (point)))
+                     (setq result (cons 
+                                   (list link desc point file heading-components heading-point inside-fstree-block)
+                                   result)))
+                   (goto-char match-end-point))))))
+      ;; look for bracket links
       (goto-char (point-min))
       (setq inside-fstree-block nil)
       (while (re-search-forward (org-registry-regexp-or-fstree-block org-bracket-link-regexp) nil t)
